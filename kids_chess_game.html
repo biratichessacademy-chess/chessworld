@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn Chess - Kids Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .game-modes {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .mode-btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        .mode-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .mode-btn.active {
+            background: linear-gradient(45deg, #2ecc71, #3498db);
+        }
+        
+        .game-area {
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 2px;
+            border: 4px solid #2c3e50;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .square.light {
+            background-color: #f0d9b5;
+        }
+        
+        .square.dark {
+            background-color: #b58863;
+        }
+        
+        .square:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .square.highlight {
+            background-color: #ffeb3b !important;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .piece-info {
+            background: #ecf0f1;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            max-width: 500px;
+        }
+        
+        .piece-info h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+        
+        .piece-info p {
+            color: #34495e;
+            font-size: 1.2em;
+            line-height: 1.5;
+        }
+        
+        .quiz-area {
+            text-align: center;
+            background: #e8f5e8;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+        
+        .quiz-question {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .piece-options {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .piece-option {
+            background: white;
+            border: 3px solid #bdc3c7;
+            border-radius: 15px;
+            padding: 20px;
+            font-size: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 80px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .piece-option:hover {
+            border-color: #3498db;
+            transform: translateY(-3px);
+        }
+        
+        .piece-option.correct {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+        
+        .piece-option.wrong {
+            border-color: #e74c3c;
+            background: #fdeaea;
+        }
+        
+        .score {
+            text-align: center;
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .feedback {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .feedback.correct {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+        
+        .feedback.wrong {
+            background: #fdeaea;
+            color: #e74c3c;
+        }
+        
+        .next-btn {
+            background: linear-gradient(45deg, #3498db, #2ecc71);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .next-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .move-indicators {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 235, 59, 0.8);
+            border: 2px solid #f57f17;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🏰 Learn Chess! 🏰</h1>
+        
+        <div class="game-modes">
+            <button class="mode-btn active" onclick="switchMode('learn')">📚 Learn Pieces</button>
+            <button class="mode-btn" onclick="switchMode('quiz')">🧩 Quiz Time</button>
+            <button class="mode-btn" onclick="switchMode('moves')">🏃 Learn Moves</button>
+        </div>
+        
+        <div class="game-area">
+            <div id="learn-mode">
+                <div class="piece-info">
+                    <h3>Click on any chess piece to learn about it!</h3>
+                    <p>Each piece has special powers and moves differently. Let's discover them together! 🎯</p>
+                </div>
+                <div class="chessboard" id="chessboard"></div>
+                <div id="piece-description" class="piece-info" style="display: none;"></div>
+            </div>
+            
+            <div id="quiz-mode" style="display: none;">
+                <div class="score">Score: <span id="quiz-score">0</span>/10 🌟</div>
+                <div class="quiz-area">
+                    <div class="quiz-question" id="quiz-question">Which piece is this?</div>
+                    <div class="piece-options" id="piece-options"></div>
+                    <div id="quiz-feedback" class="feedback" style="display: none;"></div>
+                    <button class="next-btn" id="next-question" onclick="nextQuestion()" style="display: none;">Next Question</button>
+                </div>
+            </div>
+            
+            <div id="moves-mode" style="display: none;">
+                <div class="piece-info">
+                    <h3>Click on a piece to see how it moves!</h3>
+                    <p>Watch the yellow dots show you where each piece can go! ✨</p>
+                </div>
+                <div class="chessboard" id="moves-board"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pieces = {
+            '♔': { name: 'King', description: 'The most important piece! The King can move one square in any direction - up, down, left, right, or diagonal. Protect your King!' },
+            '♕': { name: 'Queen', description: 'The most powerful piece! The Queen can move any number of squares in any direction - like combining a Rook and Bishop together!' },
+            '♖': { name: 'Rook', description: 'The castle piece! Rooks move any number of squares horizontally or vertically - straight lines only!' },
+            '♗': { name: 'Bishop', description: 'The diagonal mover! Bishops can move any number of squares diagonally. Each player has one on light squares and one on dark squares!' },
+            '♘': { name: 'Knight', description: 'The jumping horse! Knights move in an L-shape: 2 squares in one direction, then 1 square perpendicular. They can jump over other pieces!' },
+            '♙': { name: 'Pawn', description: 'The brave little soldiers! Pawns move forward one square (or two on their first move) and capture diagonally forward!' }
+        };
+
+        const initialBoard = [
+            ['♜', '♞', '♝', '♛', '♚', '♝', '♞', '♜'],
+            ['♟', '♟', '♟', '♟', '♟', '♟', '♟', '♟'],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            ['♙', '♙', '♙', '♙', '♙', '♙', '♙', '♙'],
+            ['♖', '♘', '♗', '♕', '♔', '♗', '♘', '♖']
+        ];
+
+        let currentMode = 'learn';
+        let quizScore = 0;
+        let currentQuestion = 0;
+        let quizQuestions = [];
+
+        function createBoard(boardId) {
+            const board = document.getElementById(boardId);
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    if (initialBoard[row][col]) {
+                        square.textContent = initialBoard[row][col];
+                        if (boardId === 'chessboard') {
+                            square.onclick = () => showPieceInfo(initialBoard[row][col]);
+                        } else if (boardId === 'moves-board') {
+                            square.onclick = () => showMoves(row, col, initialBoard[row][col]);
+                        }
+                    }
+                    
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        function showPieceInfo(piece) {
+            const whiteEquivalent = piece === '♜' ? '♖' : 
+                                  piece === '♞' ? '♘' : 
+                                  piece === '♝' ? '♗' : 
+                                  piece === '♛' ? '♕' : 
+                                  piece === '♚' ? '♔' : 
+                                  piece === '♟' ? '♙' : piece;
+            
+            const info = pieces[whiteEquivalent];
+            const description = document.getElementById('piece-description');
+            
+            description.innerHTML = `
+                <h3>${piece} ${info.name} ${piece}</h3>
+                <p>${info.description}</p>
+            `;
+            description.style.display = 'block';
+            
+            // Add sparkle effect
+            setTimeout(() => {
+                description.style.animation = 'pulse 0.5s';
+                setTimeout(() => description.style.animation = '', 500);
+            }, 100);
+        }
+
+        function showMoves(row, col, piece) {
+            // Clear previous indicators
+            document.querySelectorAll('.move-indicators').forEach(el => el.remove());
+            document.querySelectorAll('.square').forEach(el => el.classList.remove('highlight'));
+            
+            // Highlight selected piece
+            const selectedSquare = document.querySelector(`#moves-board .square[data-row="${row}"][data-col="${col}"]`);
+            selectedSquare.classList.add('highlight');
+            
+            const moves = getPossibleMoves(row, col, piece);
+            moves.forEach(([moveRow, moveCol]) => {
+                const targetSquare = document.querySelector(`#moves-board .square[data-row="${moveRow}"][data-col="${moveCol}"]`);
+                if (targetSquare) {
+                    const indicator = document.createElement('div');
+                    indicator.className = 'move-indicators';
+                    targetSquare.appendChild(indicator);
+                }
+            });
+        }
+
+        function getPossibleMoves(row, col, piece) {
+            const moves = [];
+            const whiteEquivalent = piece === '♜' ? '♖' : 
+                                  piece === '♞' ? '♘' : 
+                                  piece === '♝' ? '♗' : 
+                                  piece === '♛' ? '♕' : 
+                                  piece === '♚' ? '♔' : 
+                                  piece === '♟' ? '♙' : piece;
+            
+            switch(whiteEquivalent) {
+                case '♔': // King
+                    for (let r = -1; r <= 1; r++) {
+                        for (let c = -1; c <= 1; c++) {
+                            if (r === 0 && c === 0) continue;
+                            const newRow = row + r;
+                            const newCol = col + c;
+                            if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                                moves.push([newRow, newCol]);
+                            }
+                        }
+                    }
+                    break;
+                case '♖': // Rook
+                    // Horizontal and vertical moves
+                    for (let i = 1; i < 8; i++) {
+                        if (col + i < 8) moves.push([row, col + i]);
+                        if (col - i >= 0) moves.push([row, col - i]);
+                        if (row + i < 8) moves.push([row + i, col]);
+                        if (row - i >= 0) moves.push([row - i, col]);
+                    }
+                    break;
+                case '♗': // Bishop
+                    // Diagonal moves
+                    for (let i = 1; i < 8; i++) {
+                        if (row + i < 8 && col + i < 8) moves.push([row + i, col + i]);
+                        if (row + i < 8 && col - i >= 0) moves.push([row + i, col - i]);
+                        if (row - i >= 0 && col + i < 8) moves.push([row - i, col + i]);
+                        if (row - i >= 0 && col - i >= 0) moves.push([row - i, col - i]);
+                    }
+                    break;
+                case '♕': // Queen
+                    // Combine rook and bishop moves
+                    for (let i = 1; i < 8; i++) {
+                        // Rook moves
+                        if (col + i < 8) moves.push([row, col + i]);
+                        if (col - i >= 0) moves.push([row, col - i]);
+                        if (row + i < 8) moves.push([row + i, col]);
+                        if (row - i >= 0) moves.push([row - i, col]);
+                        // Bishop moves
+                        if (row + i < 8 && col + i < 8) moves.push([row + i, col + i]);
+                        if (row + i < 8 && col - i >= 0) moves.push([row + i, col - i]);
+                        if (row - i >= 0 && col + i < 8) moves.push([row - i, col + i]);
+                        if (row - i >= 0 && col - i >= 0) moves.push([row - i, col - i]);
+                    }
+                    break;
+                case '♘': // Knight
+                    const knightMoves = [[-2,-1], [-2,1], [-1,-2], [-1,2], [1,-2], [1,2], [2,-1], [2,1]];
+                    knightMoves.forEach(([r, c]) => {
+                        const newRow = row + r;
+                        const newCol = col + c;
+                        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                            moves.push([newRow, newCol]);
+                        }
+                    });
+                    break;
+                case '♙': // Pawn
+                    // Simplified pawn moves (forward only)
+                    if (piece === '♙') { // White pawn
+                        if (row > 0) moves.push([row - 1, col]);
+                    } else { // Black pawn
+                        if (row < 7) moves.push([row + 1, col]);
+                    }
+                    break;
+            }
+            return moves;
+        }
+
+        function switchMode(mode) {
+            // Update button styles
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Hide all modes
+            document.getElementById('learn-mode').style.display = 'none';
+            document.getElementById('quiz-mode').style.display = 'none';
+            document.getElementById('moves-mode').style.display = 'none';
+            
+            // Show selected mode
+            document.getElementById(mode + '-mode').style.display = 'block';
+            currentMode = mode;
+            
+            if (mode === 'quiz') {
+                startQuiz();
+            } else if (mode === 'moves') {
+                createBoard('moves-board');
+            } else {
+                createBoard('chessboard');
+            }
+        }
+
+        function startQuiz() {
+            quizScore = 0;
+            currentQuestion = 0;
+            document.getElementById('quiz-score').textContent = quizScore;
+            
+            // Create quiz questions
+            quizQuestions = [];
+            const pieceList = Object.keys(pieces);
+            for (let i = 0; i < 10; i++) {
+                const correctPiece = pieceList[Math.floor(Math.random() * pieceList.length)];
+                quizQuestions.push({
+                    piece: correctPiece,
+                    options: getRandomOptions(correctPiece)
+                });
+            }
+            
+            showQuestion();
+        }
+
+        function getRandomOptions(correctPiece) {
+            const allPieces = Object.keys(pieces);
+            const options = [correctPiece];
+            
+            while (options.length < 4) {
+                const randomPiece = allPieces[Math.floor(Math.random() * allPieces.length)];
+                if (!options.includes(randomPiece)) {
+                    options.push(randomPiece);
+                }
+            }
+            
+            return options.sort(() => Math.random() - 0.5);
+        }
+
+        function showQuestion() {
+            if (currentQuestion >= quizQuestions.length) {
+                showQuizResults();
+                return;
+            }
+            
+            const question = quizQuestions[currentQuestion];
+            document.getElementById('quiz-question').innerHTML = `
+                What is this piece called? <br><br>
+                <span style="font-size: 80px;">${question.piece}</span>
+            `;
+            
+            const optionsContainer = document.getElementById('piece-options');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach(piece => {
+                const option = document.createElement('div');
+                option.className = 'piece-option';
+                option.textContent = pieces[piece].name;
+                option.onclick = () => checkAnswer(piece, question.piece);
+                optionsContainer.appendChild(option);
+            });
+            
+            document.getElementById('quiz-feedback').style.display = 'none';
+            document.getElementById('next-question').style.display = 'none';
+        }
+
+        function checkAnswer(selected, correct) {
+            const options = document.querySelectorAll('.piece-option');
+            const feedback = document.getElementById('quiz-feedback');
+            
+            options.forEach(option => {
+                option.onclick = null;
+                if (option.textContent === pieces[correct].name) {
+                    option.classList.add('correct');
+                } else if (option.textContent === pieces[selected].name && selected !== correct) {
+                    option.classList.add('wrong');
+                }
+            });
+            
+            if (selected === correct) {
+                quizScore++;
+                document.getElementById('quiz-score').textContent = quizScore;
+                feedback.className = 'feedback correct';
+                feedback.textContent = '🎉 Correct! Well done!';
+            } else {
+                feedback.className = 'feedback wrong';
+                feedback.textContent = `❌ Not quite! That was the ${pieces[correct].name}.`;
+            }
+            
+            feedback.style.display = 'block';
+            document.getElementById('next-question').style.display = 'block';
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            showQuestion();
+        }
+
+        function showQuizResults() {
+            const percentage = (quizScore / 10) * 100;
+            let message = '';
+            
+            if (percentage >= 90) {
+                message = '🏆 Amazing! You\'re a chess expert!';
+            } else if (percentage >= 70) {
+                message = '⭐ Great job! You know your pieces well!';
+            } else if (percentage >= 50) {
+                message = '👍 Good effort! Keep practicing!';
+            } else {
+                message = '💪 Keep learning! You\'ll get better!';
+            }
+            
+            document.getElementById('quiz-question').innerHTML = `
+                <h2>Quiz Complete!</h2>
+                <p>Your Score: ${quizScore}/10 (${percentage}%)</p>
+                <p>${message}</p>
+                <br>
+                <button class="next-btn" onclick="startQuiz()">Play Again</button>
+            `;
+            
+            document.getElementById('piece-options').innerHTML = '';
+            document.getElementById('quiz-feedback').style.display = 'none';
+            document.getElementById('next-question').style.display = 'none';
+        }
+
+        // Initialize the game
+        createBoard('chessboard');
+    </script>
+</body>
+</html>
