@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Detective</title>
+    <!-- Use jspdf for client-side PDF generation for the certificate -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --light-square: #f0d9b5;
+            --dark-square: #b58863;
+            --background-color: #333333;
+            --card-bg: #444444;
+            --button-bg: #6c5ce7;
+            --button-hover: #8e80ff;
+            --text-color: #ffffff;
+            --highlight-color: #ffcc00;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            line-height: 1.6;
+            transition: background-color 0.5s;
+        }
+
+        .start-screen, .game-container, .end-game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .game-container, .end-game-container, #certificate-container {
+            display: none; /* Hide game and end-game containers initially */
+        }
+        
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            color: var(--text-color);
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .chess-icon {
+            font-size: 1.5em;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            -webkit-text-stroke: 1px #000;
+            -webkit-text-fill-color: var(--text-color);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 100%;
+        }
+
+        .card h2 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-top: 0;
+            color: var(--button-bg);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .card p {
+            font-size: clamp(1rem, 2.5vw, 1.1rem);
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .board-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+        }
+
+        canvas {
+            border: 4px solid var(--dark-square);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .notation {
+            position: absolute;
+            font-size: 0.75rem;
+            color: var(--text-color);
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .file-label {
+            bottom: -20px;
+            text-align: center;
+            width: calc(100% / 8);
+        }
+
+        .rank-label {
+            left: -20px;
+            text-align: left;
+            height: calc(100% / 8);
+            line-height: calc(100% / 8);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 300px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 15px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            background-color: var(--button-bg);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            border: 2px solid var(--button-bg);
+        }
+
+        button:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(44, 44, 44, 0.98);
+            color: var(--text-color);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 1000;
+            display: none;
+            max-width: 90%;
+            border: 3px solid var(--button-bg);
+        }
+        
+        .message-box h3 {
+            margin-top: 0;
+            font-size: 2rem;
+            color: var(--button-bg);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .message-box p {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            margin-bottom: 25px;
+            color: #ddd;
+        }
+
+        #score-display {
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            color: var(--highlight-color);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        #name-input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 1rem;
+            border: 2px solid #555;
+            background-color: #333;
+            color: #eee;
+            border-radius: 8px;
+            text-transform: uppercase;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        #name-input:focus {
+            outline: none;
+            border-color: var(--button-bg);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.5);
+        }
+
+        #certificate-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        /* Certificate styling */
+        .certificate-frame {
+            width: 100%;
+            box-sizing: border-box;
+            background: #a87932; /* Gold-like frame color */
+            padding: 15px; /* Frame thickness */
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(135deg, #a87932, #c8964e);
+        }
+
+        .certificate-inner {
+            background: #fdfaf2; /* Light off-white for content area */
+            border: 5px solid #a87932;
+            font-family: 'Times New Roman', Times, serif;
+            text-align: center;
+            padding: 40px 30px;
+            border-radius: 8px;
+            position: relative;
+            background: linear-gradient(180deg, #fdfaf2, #e6e3d7);
+        }
+        
+        .academy-name {
+            font-size: 2.8em;
+            font-weight: bold;
+            margin-bottom: 25px;
+            color: #2b2b2b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-family: 'Georgia', serif;
+        }
+        .certificate-title {
+            font-size: 3.5em;
+            font-weight: bold;
+            margin-bottom: 25px;
+            color: #555;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .certificate-body {
+            font-size: 1.6em;
+            line-height: 1.8;
+            margin-bottom: 35px;
+        }
+        .certificate-name {
+            font-size: 2.8em;
+            font-weight: bold;
+            margin: 25px 0;
+            color: #000;
+            text-transform: uppercase;
+        }
+        .certificate-date {
+            font-size: 1.3em;
+            margin-top: 25px;
+            color: #777;
+        }
+        .certificate-footer {
+            font-size: 1.3em;
+            color: #888;
+            margin-top: 25px;
+        }
+        #download-pdf-button {
+            margin-top: 20px;
+            background-color: #007bff;
+            border-radius: 8px;
+        }
+        #download-pdf-button:hover {
+            background-color: #0056b3;
+        }
+        .chess-icon {
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        #timer-display {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #dc3545;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+<div class="start-screen" id="start-screen">
+    <h1><span class="chess-icon">♟</span> Chess Detective <span class="chess-icon">♙</span></h1>
+    <p>Welcome, Detective! The Chessboard has been hit by a series of peculiar cases. Your mission is to examine each scene, identify the crucial piece, and solve the mystery.</p>
+    <p>Enter your name below to begin your investigation:</p>
+    <input type="text" id="name-input" placeholder="Your Name" maxlength="20" oninput="this.value = this.value.toUpperCase()">
+    <button id="startButton">Begin Investigation</button>
+</div>
+
+<div class="game-container" id="game-container">
+    <div class="card">
+        <h2 id="puzzle-title"></h2>
+        <p id="puzzle-text"></p>
+        <div id="timer-display"></div>
+        <div id="score-display"></div>
+        <div class="game-area">
+            <div class="board-container">
+                <canvas id="chessCanvas"></canvas>
+            </div>
+            <div class="controls">
+                <button id="resetButton">Reset Board</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="end-game-container" id="end-game-container">
+    <div class="card">
+        <h2>Case Closed!</h2>
+        <p id="final-score-text"></p>
+        <button id="show-certificate-button">SHOW MY CERTIFICATE</button>
+    </div>
+</div>
+
+<div id="messageBox" class="message-box">
+    <h3 id="messageTitle"></h3>
+    <p id="messageText"></p>
+    <button id="closeMessage">Okay</button>
+</div>
+
+<div id="certificate-container"></div>
+
+<script>
+    // Get all necessary DOM elements
+    const canvas = document.getElementById('chessCanvas');
+    const ctx = canvas.getContext('2d');
+    const messageBox = document.getElementById('messageBox');
+    const messageTitle = document.getElementById('messageTitle');
+    const messageText = document.getElementById('messageText');
+    const closeMessageButton = document.getElementById('closeMessage');
+    const boardContainer = document.querySelector('.board-container');
+    const puzzleTitle = document.getElementById('puzzle-title');
+    const puzzleText = document.getElementById('puzzle-text');
+    const scoreDisplay = document.getElementById('score-display');
+    const timerDisplay = document.getElementById('timer-display');
+    const resetButton = document.getElementById('resetButton');
+    const endGameContainer = document.getElementById('end-game-container');
+    const finalScoreText = document.getElementById('final-score-text');
+    const nameInput = document.getElementById('name-input');
+    const startButton = document.getElementById('startButton');
+    const showCertificateButton = document.getElementById('show-certificate-button');
+    const certificateContainer = document.getElementById('certificate-container');
+    const startScreen = document.getElementById('start-screen');
+    const gameContainer = document.getElementById('game-container');
+
+    // Game state variables
+    let boardSize = 500;
+    let squareSize = boardSize / 8;
+    let score = 0;
+    let wrongAnswers = 0;
+    let currentPuzzleIndex = 0;
+    let currentBoard;
+    let selectedPiece = null;
+    let totalTimer = 30 * 60; // 30 minutes in seconds
+    let timerInterval;
+    let playerName = '';
+
+    // Define the chess puzzles
+    const puzzles = [
+        {
+            title: "Pawn's First Move",
+            text: "Which pawn can move forward two squares for the first time?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 6, col: 0 }, // White Pawn on a2
+            solution: "The white pawn on a2 can move two squares forward to a4. This is a common first move for pawns."
+        },
+        {
+            title: "Rook's Path",
+            text: "A white rook is ready to move along a file. Which one can take a black pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, 'R', null, null, null, null, null],
+                [null, null, 'p', null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 5, col: 2 }, // Black Pawn on c3
+            solution: "The white rook on c4 can capture the black pawn on c3. Rooks move in straight lines along ranks and files."
+        },
+        {
+            title: "Bishop's Reach",
+            text: "A black bishop is targeting a white piece. Which one can it capture?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'P', null, null, 'b', null],
+                [null, null, null, null, null, 'p', null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 3 }, // White Pawn on d5
+            solution: "The black bishop on g5 can capture the white pawn on d5. Bishops move along diagonals."
+        },
+        {
+            title: "Knight's Leap",
+            text: "A white knight is preparing to jump. Which black piece can it capture?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'p', null, null, null],
+                [null, null, null, 'N', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 4 }, // Black Pawn on e5
+            solution: "The white knight on d4 can jump to e5 and capture the black pawn. Knights move in an 'L' shape."
+        },
+        {
+            title: "Queen's Dominion",
+            text: "The white queen is eyeing a black piece. Which piece can it capture?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'q', null, 'n', null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 5 }, // Black Knight on f4
+            solution: "The white queen on d4 can capture the black knight on f4. Queens are powerful, as they combine the moves of a rook and a bishop."
+        },
+        {
+            title: "King's Protection",
+            text: "The black king is in danger! Which white piece is checking it?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, 'B', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 2 }, // White Bishop on c4
+            solution: "The white bishop on c4 is checking the black king on g8. Bishops can give check from a distance on diagonals."
+        },
+        {
+            title: "Pawn vs. Pawn",
+            text: "A white pawn is ready to capture a black pawn. Which one is it?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'p', 'P', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 3 }, // Black Pawn on d4
+            solution: "The white pawn on e4 can capture the black pawn on d4, as pawns capture diagonally."
+        },
+        {
+            title: "Rook's Threat",
+            text: "Which black rook can capture a white bishop?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, 'B', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 0, col: 0 }, // Black Rook on a8
+            solution: "The black rook on a8 can capture the white bishop on c6. Rooks move in straight lines."
+        },
+        {
+            title: "Knight Fork",
+            text: "A white knight is attacking two pieces at once. Which black pawn can it capture?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'p', null, null, null],
+                [null, null, null, 'N', null, 'p', null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 5 }, // Black Pawn on f4
+            solution: "The white knight on d4 can capture the black pawn on f4. It's also attacking the pawn on e5, creating a fork."
+        },
+        {
+            title: "Bishop's Path",
+            text: "A white bishop is controlling a long diagonal. Which black piece is in its sights?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, 'b', null],
+                [null, null, 'B', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 6 }, // Black Bishop on g6
+            solution: "The white bishop on c5 can capture the black bishop on g6. Bishops move along diagonals."
+        },
+        {
+            title: "Queen's Capture",
+            text: "The black queen is on the attack. Which white piece can it capture?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, 'Q', null, null],
+                [null, null, null, 'r', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 3 }, // White Rook on d4
+            solution: "The black queen on f5 can capture the white rook on d4. Queens are very flexible!"
+        },
+        {
+            title: "Pawn Promotion",
+            text: "A white pawn is about to reach the other side of the board. Which pawn is it?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                [null, 'P', null, null, null, null, null, null],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 1, col: 1 }, // White Pawn on b7
+            solution: "The white pawn on b7 can move to b8, where it can be promoted to a queen, rook, bishop, or knight."
+        },
+        {
+            title: "Rook Check",
+            text: "A white rook is checking the black king. Which piece is it?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'R', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 4 }, // White Rook on e4
+            solution: "The white rook on e4 is checking the black king on e8. Rooks are great for giving check from a distance."
+        },
+        {
+            title: "Bishop's Trap",
+            text: "A black bishop is ready to trap a white piece. Which white knight can it capture?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, 'N', null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, 'b', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 1 }, // White Knight on b6
+            solution: "The black bishop on c4 can capture the white knight on b6. Bishops are great for trapping pieces on their diagonals."
+        },
+        {
+            title: "King's Escape",
+            text: "The white king is in check! Which black piece is the threat?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'q', null, null, null, null],
+                [null, null, null, null, 'K', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 3 }, // Black Queen on d5
+            solution: "The black queen on d5 is checking the white king on e4. Kings must always move out of check."
+        },
+        {
+            title: "The Silent Pawn",
+            text: "Which white pawn has a clear path to the end of the board?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', null, 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 6, col: 3 }, // White Pawn on d2
+            solution: "The white pawn on d2 has a clear path forward and is ready to advance."
+        },
+        {
+            title: "Rook's Lookout",
+            text: "Which black rook is guarding the eighth rank?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 0, col: 7 }, // Black Rook on h8
+            solution: "The black rook on h8 is guarding the eighth rank, ready to defend."
+        },
+        {
+            title: "Bishop's Check",
+            text: "A white bishop is checking the black king. Which one is it?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'B', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 4 }, // White Bishop on e6
+            solution: "The white bishop on e6 is checking the black king on e8. Bishops are great for giving check from diagonals."
+        },
+        {
+            title: "The Knight's Circle",
+            text: "Which white knight can reach the center of the board?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'N', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 3 }, // White Knight on d4
+            solution: "The white knight on d4 is a well-positioned piece in the center of the board."
+        },
+        {
+            title: "Queen's Power",
+            text: "Which white queen can capture a black knight?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, 'Q', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, 'n', null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 1 }, // Black Knight on b4
+            solution: "The white queen on d6 can capture the black knight on b4."
+        },
+        {
+            title: "King's Defense",
+            text: "Which black piece is checking the white king?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'R', 'K', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 3 }, // White Rook on d4
+            solution: "The black rook on d4 is checking the white king on e4. The king must move."
+        },
+        {
+            title: "Pawn's Double Move",
+            text: "Which white pawn can move two squares forward?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 6, col: 4 }, // White Pawn on e2
+            solution: "The white pawn on e2 can move forward to e4. This is a standard opening move."
+        },
+        {
+            title: "Rook's Path",
+            text: "A white rook is ready to take a black pawn. Which one can it take?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, 'R', null],
+                [null, null, null, null, null, null, 'p', null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 6 }, // Black Pawn on g4
+            solution: "The white rook on g5 can capture the black pawn on g4. Rooks move in straight lines along files."
+        },
+        {
+            title: "Bishop's diagonal",
+            text: "Which black bishop has a clear diagonal?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, 'B', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 2 }, // White Bishop on c5
+            solution: "The black bishop on c5 is blocking its own path, so it cannot move."
+        },
+        {
+            title: "Knight's Leap",
+            text: "Which white knight can capture a black queen?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'q', null, null, null],
+                [null, null, null, null, null, 'N', null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 4 }, // Black Queen on e6
+            solution: "The white knight on f5 can jump to e6 and capture the black queen."
+        },
+        {
+            title: "Queen's Attack",
+            text: "Which white queen can capture a black rook?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'Q', null, null, null],
+                [null, null, null, 'r', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 3 }, // Black Rook on d5
+            solution: "The white queen on e6 can capture the black rook on d5."
+        },
+        {
+            title: "King's Defense",
+            text: "Which black piece is giving check to the white king?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'N', null, null, null],
+                [null, null, null, null, 'K', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 4 }, // White Knight on e5
+            solution: "The black knight on e5 is not a black piece and thus can't be selected."
+        },
+        {
+            title: "The Pawn's Threat",
+            text: "Which white pawn can capture a black knight?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'n', null, null, null],
+                [null, null, null, 'P', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 3 }, // White Pawn on d5
+            solution: "The white pawn on d5 can capture the black knight on e6. Pawns capture diagonally."
+        },
+        {
+            title: "Rook's Path",
+            text: "Which black rook can capture a white queen?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'Q', null, null, null, null],
+                [null, null, null, 'r', null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 5, col: 3 }, // Black Rook on d3
+            solution: "The black rook on d3 can capture the white queen on d4. Rooks move in straight lines."
+        },
+        {
+            title: "Bishop's Reach",
+            text: "Which white bishop can capture a black pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, 'p', null, null],
+                [null, null, null, 'B', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 5 }, // Black Pawn on f6
+            solution: "The white bishop on d5 can capture the black pawn on f6."
+        },
+        {
+            title: "Knight's Fork",
+            text: "Which white knight can capture both a black bishop and a black rook?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, 'b', null, null, null, 'r', null, null],
+                [null, null, 'N', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 2 }, // White Knight on c5
+            solution: "The white knight on c5 can capture either the black bishop on b6 or the black rook on f6. This is called a fork."
+        },
+        {
+            title: "Queen's Threat",
+            text: "Which black queen can capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, 'q', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'P', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 3 }, // White Pawn on d4
+            solution: "The black queen on d6 can capture the white pawn on d4."
+        },
+        {
+            title: "Rook's Path",
+            text: "Which white rook is attacking a black knight?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'r', null, null, null],
+                [null, null, null, null, null, null, 'n', null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 6 }, // Black Knight on g4
+            solution: "The white rook on e4 can capture the black knight on g4."
+        },
+        {
+            title: "Bishop's Reach",
+            text: "Which black bishop is threatening a white queen?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, 'b', null, null, null, null, null, null],
+                ['Q', null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 1 }, // Black Bishop on b5
+            solution: "The black bishop on b5 can capture the white queen on a4."
+        },
+        {
+            title: "Knight's Leap",
+            text: "Which white knight can capture a black pawn and a black rook?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, 'p', 'N', null, null, null, null, 'r'],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 1 }, // Black Pawn on b4
+            solution: "The white knight on c4 can capture the black pawn on b4. It's also attacking the rook on h4."
+        },
+        {
+            title: "Queen's Power",
+            text: "Which white queen can capture a black knight?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, 'Q', null, null, null, null, null],
+                [null, null, null, null, 'n', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 4 }, // Black Knight on e5
+            solution: "The white queen on c6 can capture the black knight on e5."
+        },
+        {
+            title: "Pawn's Revenge",
+            text: "Which black pawn is threatening to capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'P', 'p', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 4 }, // Black Pawn on e5
+            solution: "The black pawn on e5 can capture the white pawn on d4."
+        },
+        {
+            title: "Rook's Threat",
+            text: "Which white rook is attacking a black king?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'R', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 4 }, // White Rook on e5
+            solution: "The white rook on e5 is not attacking the black king."
+        },
+        {
+            title: "Bishop's Reach",
+            text: "Which black bishop can capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, 'p', null, null, null, null, null],
+                [null, 'b', null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 2 }, // White Pawn on c5
+            solution: "The black bishop on b4 can capture the white pawn on c5."
+        },
+        {
+            title: "Knight's Path",
+            text: "Which white knight can capture a black bishop?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, 'B', null, null, null, null, null, null],
+                [null, null, null, 'N', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 1 }, // Black Bishop on b5
+            solution: "The white knight on d4 can capture the black bishop on b5."
+        },
+        {
+            title: "Queen's Path",
+            text: "Which black queen can capture a white rook?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, 'Q', null],
+                [null, null, null, null, null, null, 'R', null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 6 }, // White Rook on g4
+            solution: "The black queen on g5 can capture the white rook on g4."
+        },
+        {
+            title: "King's Defense",
+            text: "Which black piece is giving check to the white king?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'q', null, null, null],
+                [null, null, null, null, 'K', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 4 }, // Black Queen on e5
+            solution: "The black queen on e5 is giving check to the white king on e4. The king must move."
+        },
+        {
+            title: "Pawn's Challenge",
+            text: "Which white pawn can capture a black pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'p', null, null, null],
+                [null, null, null, null, 'P', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 4 }, // Black Pawn on e6
+            solution: "The white pawn on e5 can capture the black pawn on e6."
+        },
+        {
+            title: "Rook's Threat",
+            text: "Which black rook is attacking a white bishop?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, 'B', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['r', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 7, col: 0 }, // Black Rook on a1
+            solution: "The black rook on a1 can capture the white bishop on c6."
+        },
+        {
+            title: "Bishop's Attack",
+            text: "Which white bishop can capture a black knight?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'n', null, null, null],
+                [null, null, null, 'B', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 4 }, // Black Knight on e6
+            solution: "The white bishop on d5 can capture the black knight on e6."
+        },
+        {
+            title: "Knight's Path",
+            text: "Which black knight can capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, 'P', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'n', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 3 }, // White Pawn on d6
+            solution: "The black knight on e4 can capture the white pawn on d6."
+        },
+        {
+            title: "Queen's Dominance",
+            text: "Which white queen can capture a black rook?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'r', null, null, null, 'Q'],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 3 }, // Black Rook on d4
+            solution: "The white queen on h4 can capture the black rook on d4."
+        },
+        {
+            title: "Rook's Path",
+            text: "Which black rook is attacking a white queen?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'Q', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'r', null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 5, col: 3 }, // Black Rook on d3
+            solution: "The black rook on d3 can capture the white queen on d5."
+        },
+        {
+            title: "Bishop's Threat",
+            text: "Which white bishop can capture a black pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, 'p', null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, 'B', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 5 }, // Black Pawn on f6
+            solution: "The white bishop on c4 can capture the black pawn on f6."
+        },
+        {
+            title: "Knight's Leap",
+            text: "Which black knight can capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'P', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, 'n', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 4 }, // White Pawn on e6
+            solution: "The black knight on e4 can capture the white pawn on e6."
+        },
+        {
+            title: "Pawn's Challenge",
+            text: "Which black pawn can capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, 'P', 'p', null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 3, col: 2 }, // Black Pawn on c5
+            solution: "The black pawn on c5 can capture the white pawn on b4."
+        },
+        {
+            title: "Rook's Power",
+            text: "Which white rook can capture a black knight?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, 'R', null, null],
+                [null, null, null, null, null, 'n', null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 5 }, // Black Knight on f4
+            solution: "The white rook on f5 can capture the black knight on f4."
+        },
+        {
+            title: "Bishop's Threat",
+            text: "Which black bishop can capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'p', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, 'b', null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 4 }, // White Pawn on e6
+            solution: "The black bishop on f4 can capture the white pawn on e6."
+        },
+        {
+            title: "Knight's Path",
+            text: "Which white knight can capture a black queen?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'q', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, null, null, 'N', null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 2, col: 4 }, // Black Queen on e6
+            solution: "The white knight on d4 can capture the black queen on e6."
+        },
+        {
+            title: "Queen's Attack",
+            text: "Which black queen can capture a white pawn?",
+            board: [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, 'Q', null, null, null],
+                [null, null, null, null, null, null, null, null],
+                [null, 'p', null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ],
+            correctGuess: { row: 4, col: 1 }, // White Pawn on b4
+            solution: "The black queen on e6 can capture the white pawn on b4."
+        },
+    ];
+
+    // Unicode characters for chess pieces
+    const pieceUnicode = {
+        'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
+        'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔',
+    };
+    
+    // Function to get CSS variable values
+    function varToCss(varName) {
+        return getComputedStyle(document.documentElement).getPropertyValue(`--${varName}`);
+    }
+
+    // Drawing functions
+    function drawBoard() {
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const isLight = (row + col) % 2 === 0;
+                ctx.fillStyle = isLight ? varToCss('light-square') : varToCss('dark-square');
+                ctx.fillRect(col * squareSize, row * squareSize, squareSize, squareSize);
+            }
+        }
+    }
+
+    function drawPieces() {
+        if (!currentBoard) return;
+        
+        ctx.font = `${squareSize * 0.8}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const piece = currentBoard[row][col];
+                if (piece) {
+                    const x = col * squareSize + squareSize / 2;
+                    const y = row * squareSize + squareSize / 2;
+                    ctx.fillStyle = piece === piece.toLowerCase() ? '#000' : '#fff';
+                    ctx.fillText(pieceUnicode[piece], x, y);
+                }
+            }
+        }
+    }
+    
+    function draw() {
+        drawBoard();
+        drawPieces();
+        if (selectedPiece) {
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+            ctx.fillRect(selectedPiece.col * squareSize, selectedPiece.row * squareSize, squareSize, squareSize);
+        }
+    }
+
+    function showMessage(title, message, isSuccess = false) {
+        messageTitle.textContent = title;
+        messageText.textContent = message;
+        messageBox.style.display = 'block';
+        messageBox.style.borderColor = isSuccess ? varToCss('highlight-color') : '#dc3545';
+        stopTimer();
+    }
+
+    function hideMessage() {
+        messageBox.style.display = 'none';
+        if (currentPuzzleIndex < puzzles.length) {
+            startTimer();
+        }
+    }
+
+    function addNotation() {
+        document.querySelectorAll('.notation').forEach(el => el.remove());
+        const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+        for (let i = 0; i < 8; i++) {
+            const fileLabel = document.createElement('div');
+            fileLabel.className = 'notation file-label';
+            fileLabel.textContent = files[i];
+            fileLabel.style.left = `${i * squareSize + squareSize / 2}px`;
+            boardContainer.appendChild(fileLabel);
+            const rankLabel = document.createElement('div');
+            rankLabel.className = 'notation rank-label';
+            rankLabel.textContent = ranks[i];
+            rankLabel.style.top = `${i * squareSize + squareSize / 2}px`;
+            boardContainer.appendChild(rankLabel);
+        }
+    }
+
+    function nextPuzzle() {
+        currentPuzzleIndex++;
+        if (currentPuzzleIndex < puzzles.length) {
+            loadPuzzle(currentPuzzleIndex);
+        } else {
+            endGame();
+        }
+    }
+
+    function loadPuzzle(index) {
+        if (index < puzzles.length) {
+            const puzzle = puzzles[index];
+            currentBoard = JSON.parse(JSON.stringify(puzzle.board));
+            puzzleTitle.textContent = puzzle.title;
+            puzzleText.textContent = puzzle.text;
+            selectedPiece = null;
+            wrongAnswers = 0;
+            updateScoreDisplay();
+            draw();
+        }
+    }
+
+    function updateScoreDisplay() {
+        scoreDisplay.textContent = `Score: ${score} / ${puzzles.length * 2}`;
+    }
+
+    function startTimer() {
+        if (!timerInterval) {
+            timerInterval = setInterval(() => {
+                totalTimer--;
+                const minutes = Math.floor(totalTimer / 60);
+                const seconds = totalTimer % 60;
+                timerDisplay.textContent = `Time: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                if (totalTimer <= 0) {
+                    stopTimer();
+                    endGame();
+                }
+            }, 1000);
+        }
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+
+    function endGame() {
+        stopTimer();
+        gameContainer.style.display = 'none';
+        endGameContainer.style.display = 'flex';
+        if (totalTimer <= 0) {
+            finalScoreText.textContent = `Time's up! You solved ${score / 2} out of ${puzzles.length} puzzles! Your final score is ${score}.`;
+        } else {
+            finalScoreText.textContent = `Congratulations! You solved all the puzzles! Your final score is ${score}.`;
+        }
+    }
+
+    function generateCertificateHTML() {
+        const name = playerName || 'DETECTIVE';
+        const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        return `
+            <div class="certificate-frame">
+                <div class="certificate-inner">
+                    <div class="academy-name">THE CHESS ACADEMY</div>
+                    <h2 class="certificate-title">CERTIFICATE OF RECOGNITION</h2>
+                    <div class="certificate-body">
+                        <p>This certificate is proudly awarded to</p>
+                        <p class="certificate-name">${name}</p>
+                        <p>for successfully completing the Chess Detective Puzzles and achieving a score of</p>
+                        <p><strong>${score} / ${puzzles.length * 2}</strong></p>
+                    </div>
+                    <p class="certificate-date">Date: ${date}</p>
+                    <div class="certificate-footer">Digital Certificate. No signature required.</div>
+                </div>
+            </div>
+            <button id="download-pdf-button">Download as PDF</button>
+        `;
+    }
+
+    function downloadCertificate() {
+        const doc = new window.jspdf.jsPDF({
+            orientation: 'landscape',
+            unit: 'px',
+            format: [800, 600]
+        });
+        const element = document.querySelector('.certificate-frame');
+        doc.html(element, {
+            callback: function(pdf) {
+                pdf.save(`Chess_Detective_Certificate_${playerName}.pdf`);
+            },
+            x: 0,
+            y: 0,
+            width: 800,
+            windowWidth: 800,
+            windowHeight: 600
+        });
+    }
+
+    // Event listeners
+    canvas.addEventListener('click', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const col = Math.floor(x / squareSize);
+        const row = Math.floor(y / squareSize);
+
+        if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+            const piece = currentBoard[row][col];
+            if (piece) {
+                selectedPiece = { row, col };
+                const currentPuzzle = puzzles[currentPuzzleIndex];
+                if (selectedPiece.row === currentPuzzle.correctGuess.row && selectedPiece.col === currentPuzzle.correctGuess.col) {
+                    score += 2;
+                    showMessage("Correct!", `Case Solved! ${currentPuzzle.solution} You earned 2 points. Your current score is ${score}.`, true);
+                    updateScoreDisplay();
+                    setTimeout(() => {
+                        hideMessage();
+                        nextPuzzle();
+                    }, 4000);
+                } else {
+                    wrongAnswers++;
+                    if (wrongAnswers >= 2) {
+                        const file = String.fromCharCode(97 + currentPuzzle.correctGuess.col);
+                        const rank = 8 - currentPuzzle.correctGuess.row;
+                        showMessage("The correct answer was...", `After two wrong guesses, here's the solution: The correct piece was the one on ${file}${rank}. ${currentPuzzle.solution}`);
+                        setTimeout(() => {
+                            hideMessage();
+                            nextPuzzle();
+                        }, 4000);
+                    } else {
+                        showMessage("Wrong Move, Detective!", "That's not the right piece. Re-examine the board and consider all possible moves.");
+                        setTimeout(hideMessage, 2000);
+                    }
+                }
+            } else {
+                selectedPiece = null;
+            }
+            draw();
+        }
+    });
+    
+    resetButton.addEventListener('click', () => {
+        loadPuzzle(currentPuzzleIndex);
+    });
+
+    closeMessageButton.addEventListener('click', () => {
+        hideMessage();
+    });
+
+    showCertificateButton.addEventListener('click', () => {
+        const certificateHTML = generateCertificateHTML();
+        certificateContainer.innerHTML = certificateHTML;
+        certificateContainer.style.display = 'flex';
+        endGameContainer.style.display = 'none';
+
+        document.getElementById('download-pdf-button').addEventListener('click', () => {
+            downloadCertificate();
+        });
+    });
+
+    function resizeCanvas() {
+        boardSize = Math.min(boardContainer.offsetWidth, boardContainer.offsetHeight);
+        canvas.width = boardSize;
+        canvas.height = boardSize;
+        squareSize = boardSize / 8;
+        addNotation();
+        draw();
+    }
+    
+    function startGame() {
+        const name = nameInput.value.trim();
+        if (name) {
+            playerName = name;
+        } else {
+            playerName = 'DETECTIVE';
+        }
+        startScreen.style.display = 'none';
+        gameContainer.style.display = 'flex';
+        resizeCanvas();
+        loadPuzzle(0);
+        startTimer();
+    }
+    
+    startButton.addEventListener('click', startGame);
+
+    window.onload = function() {
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    };
+</script>
+</body>
+</html>
